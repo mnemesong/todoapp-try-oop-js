@@ -46,6 +46,7 @@ export class FormRec implements RecFromPlan, RecFromTodo
     }
 
     public save(): void {
+        console.log("saving form:", this)
         this.saver(this)
     }
 }

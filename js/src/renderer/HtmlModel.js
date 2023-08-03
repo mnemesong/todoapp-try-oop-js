@@ -7,12 +7,21 @@ var HtmlModel = /** @class */ (function () {
     HtmlModel.prototype.taskContainerId = function (taskId) {
         return 'task-cont-' + taskId;
     };
+    HtmlModel.prototype.formInputId = function () { return 'form-input'; };
+    HtmlModel.prototype.formSelectId = function () { return 'form-select'; };
+    HtmlModel.prototype.formSubmitBtnId = function () { return 'form-submit'; };
     HtmlModel.prototype.respContainerid = function (respId) {
         return 'resp-cont-' + respId;
     };
     HtmlModel.prototype.attributeOfHtmlEl = function (selector, attrName) {
         try {
-            return document.querySelector(selector).getAttribute(attrName);
+            var el = document.querySelector(selector);
+            if (attrName === 'value') {
+                return el.value;
+            }
+            else {
+                el.getAttribute(attrName);
+            }
         }
         catch (e) {
             return null;

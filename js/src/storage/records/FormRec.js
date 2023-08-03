@@ -20,6 +20,7 @@ var FormRec = /** @class */ (function () {
         return new FormRec(this.name, id, this.saver);
     };
     FormRec.prototype.save = function () {
+        console.log("saving form:", this);
         this.saver(this);
     };
     return FormRec;

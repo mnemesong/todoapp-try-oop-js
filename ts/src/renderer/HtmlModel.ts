@@ -6,11 +6,11 @@ export class HtmlModel implements HtmlModelType
         return 'task-cont-' + taskId
     }
 
-    formInputId: () => 'form-input'
+    public formInputId() { return 'form-input' }
 
-    formSelectId: () => 'form-select'
+    public formSelectId() {return 'form-select'}
 
-    formSubmitBtnId: () => 'form-submit'
+    formSubmitBtnId() {return 'form-submit'}
 
     respContainerid (respId: string): string {
         return 'resp-cont-' + respId
@@ -18,7 +18,12 @@ export class HtmlModel implements HtmlModelType
 
     attributeOfHtmlEl (selector: string, attrName: string): any {
         try {
-            return document.querySelector(selector).getAttribute(attrName)
+            const el = document.querySelector(selector)
+            if(attrName === 'value') {
+                return (el as unknown as {value: string}).value
+            } else {
+                el.getAttribute(attrName)
+            }
         } catch (e) {
             return null
         }

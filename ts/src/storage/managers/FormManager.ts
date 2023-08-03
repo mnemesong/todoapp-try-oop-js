@@ -6,7 +6,7 @@ import {
 } from "../../plan-tasks-domain/managers/FormManagType";
 import { FormRec } from "../records/FormRec";
 
-let store: {f: FormRec} = {
+const store: {f: FormRec} = {
     f: (new FormRec('', '', (f: FormRec) => {store.f = f}))
 }
 

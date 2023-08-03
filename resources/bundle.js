@@ -101,10 +101,11 @@ var RenderTodoDomain = /** @class */ (function () {
     RenderTodoDomain.prototype.renderForm = function () {
         var _this = this;
         var form = this.formManager.getForm();
+        console.log(this.htmlModel);
         var formWidgetHtml = (new FormWidget_1.FormWidget(form.getName(), form.getRespId(), this.htmlModel.formSubmitBtnId(), this.htmlModel.formInputId(), this.htmlModel.formSelectId(), this.getResponsiblesRecord())).render();
         this.renderModel.renderInFormHost(formWidgetHtml);
-        this.eventModel.setOnChangeAction('#' + this.htmlModel.formInputId, function () {
-            _this.formManager.getForm().withName(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formInputId, 'value')).save();
+        this.eventModel.setOnChangeAction('#' + this.htmlModel.formInputId(), function () {
+            _this.formManager.getForm().withName(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formInputId(), 'value')).save();
             _this.rerender();
         });
         this.eventModel.setOnChangeAction('#' + this.htmlModel.formSelectId(), function () {
@@ -236,12 +237,21 @@ var HtmlModel = /** @class */ (function () {
     HtmlModel.prototype.taskContainerId = function (taskId) {
         return 'task-cont-' + taskId;
     };
+    HtmlModel.prototype.formInputId = function () { return 'form-input'; };
+    HtmlModel.prototype.formSelectId = function () { return 'form-select'; };
+    HtmlModel.prototype.formSubmitBtnId = function () { return 'form-submit'; };
     HtmlModel.prototype.respContainerid = function (respId) {
         return 'resp-cont-' + respId;
     };
     HtmlModel.prototype.attributeOfHtmlEl = function (selector, attrName) {
         try {
-            return document.querySelector(selector).getAttribute(attrName);
+            var el = document.querySelector(selector);
+            if (attrName === 'value') {
+                return el.value;
+            }
+            else {
+                el.getAttribute(attrName);
+            }
         }
         catch (e) {
             return null;
@@ -368,6 +378,7 @@ var FormRec = /** @class */ (function () {
         return new FormRec(this.name, id, this.saver);
     };
     FormRec.prototype.save = function () {
+        console.log("saving form:", this);
         this.saver(this);
     };
     return FormRec;

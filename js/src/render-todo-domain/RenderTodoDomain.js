@@ -21,10 +21,11 @@ var RenderTodoDomain = /** @class */ (function () {
     RenderTodoDomain.prototype.renderForm = function () {
         var _this = this;
         var form = this.formManager.getForm();
+        console.log(this.htmlModel);
         var formWidgetHtml = (new FormWidget_1.FormWidget(form.getName(), form.getRespId(), this.htmlModel.formSubmitBtnId(), this.htmlModel.formInputId(), this.htmlModel.formSelectId(), this.getResponsiblesRecord())).render();
         this.renderModel.renderInFormHost(formWidgetHtml);
-        this.eventModel.setOnChangeAction('#' + this.htmlModel.formInputId, function () {
-            _this.formManager.getForm().withName(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formInputId, 'value')).save();
+        this.eventModel.setOnChangeAction('#' + this.htmlModel.formInputId(), function () {
+            _this.formManager.getForm().withName(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formInputId(), 'value')).save();
             _this.rerender();
         });
         this.eventModel.setOnChangeAction('#' + this.htmlModel.formSelectId(), function () {

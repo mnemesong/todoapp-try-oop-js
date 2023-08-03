@@ -41,6 +41,7 @@ export class RenderTodoDomain
 
     private renderForm(): void {
         const form = this.formManager.getForm()
+        console.log(this.htmlModel)
         const formWidgetHtml = (new FormWidget(
             form.getName(),
             form.getRespId(),
@@ -51,11 +52,11 @@ export class RenderTodoDomain
         )).render()
         this.renderModel.renderInFormHost(formWidgetHtml)
         this.eventModel.setOnChangeAction(
-            '#' + this.htmlModel.formInputId,
+            '#' + this.htmlModel.formInputId(),
             () => {
                 this.formManager.getForm().withName(
                     this.htmlModel.attributeOfHtmlEl(
-                        '#' + this.htmlModel.formInputId,
+                        '#' + this.htmlModel.formInputId(),
                         'value'
                     )
                 ).save()
