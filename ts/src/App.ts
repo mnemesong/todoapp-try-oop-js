@@ -1,6 +1,5 @@
 import { PlanTaskService } from "./plan-tasks-domain/PlanTasksService";
 import { RenderTodoDomain } from "./render-todo-domain/RenderTodoDomain";
-import { PlanTaskModelType } from "./render-todo-domain/models/PlanTaskModelType";
 import { EventModel } from "./renderer/EventModel";
 import { HtmlModel } from "./renderer/HtmlModel";
 import { RenderModel } from "./renderer/RenderModel";
@@ -8,7 +7,7 @@ import { FormManager } from "./storage/managers/FormManager";
 import { RespManager } from "./storage/managers/RespManager";
 import { TaskManager } from "./storage/managers/TaskManager";
 
-class App 
+export class App 
 {
     private formManager: FormManager
     private respManager: RespManager
@@ -41,7 +40,7 @@ class App
         )
     }
 
-    init() {
+    init(): App {
         const res1 = this.respManager.create("Mary")
         const res2 = this.respManager.create("John")
         res1.save()
@@ -49,6 +48,7 @@ class App
         this.taskManager.createNew("Buy the milk", res1.getId()).save()
         this.taskManager.createNew("Buy the fish", res1.getId()).save()
         this.formManager.getForm().withRespId(res1.getId()).save()
+        return this
     }
 
     public run(): void {

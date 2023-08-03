@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.App = void 0;
 var PlanTasksService_1 = require("./plan-tasks-domain/PlanTasksService");
 var RenderTodoDomain_1 = require("./render-todo-domain/RenderTodoDomain");
 var EventModel_1 = require("./renderer/EventModel");
@@ -27,9 +28,11 @@ var App = /** @class */ (function () {
         this.taskManager.createNew("Buy the milk", res1.getId()).save();
         this.taskManager.createNew("Buy the fish", res1.getId()).save();
         this.formManager.getForm().withRespId(res1.getId()).save();
+        return this;
     };
     App.prototype.run = function () {
         this.renderTodoService.rerender();
     };
     return App;
 }());
+exports.App = App;
