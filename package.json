@@ -14,12 +14,13 @@
   "author": "Anatoly Starodubtsev <tostar74@mail.ru>",
   "license": "MIT",
   "devDependencies": {
-    "mocha": "^9.*",
-    "typescript": "^4.9.4",
     "@types/mocha": "^9.*",
     "@types/node": "^13.*",
+    "@typescript/lib-dom": "npm:@types/web@0.0.112",
     "browserify": "^17.0.0",
-    "node-html-parser": "*"
+    "mocha": "^9.*",
+    "node-html-parser": "*",
+    "typescript": "^4.9.4"
   },
   "dependencies": {
     "superstruct": "^0.12.2",
