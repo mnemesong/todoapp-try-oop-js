@@ -1,1862 +1,271 @@
-require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.App = void 0;
-var PlanTasksService_1 = require("./plan-tasks-domain/PlanTasksService");
-var RenderTodoDomain_1 = require("./render-todo-domain/RenderTodoDomain");
-var EventModel_1 = require("./renderer/EventModel");
-var HtmlModel_1 = require("./renderer/HtmlModel");
-var RenderModel_1 = require("./renderer/RenderModel");
-var FormManager_1 = require("./storage/managers/FormManager");
-var RespManager_1 = require("./storage/managers/RespManager");
-var TaskManager_1 = require("./storage/managers/TaskManager");
-var App = /** @class */ (function () {
-    function App() {
-        this.taskManager = new TaskManager_1.TaskManager();
-        this.respManager = new RespManager_1.RespManager(this.taskManager);
-        this.formManager = new FormManager_1.FormManager();
-        this.eventModel = new EventModel_1.EventModel();
-        this.htmlModel = new HtmlModel_1.HtmlModel();
-        this.renderModel = new RenderModel_1.RenderModel();
-        this.planTaskService = new PlanTasksService_1.PlanTaskService(this.formManager, this.respManager, this.taskManager);
-        this.renderTodoService = new RenderTodoDomain_1.RenderTodoDomain(this.renderModel, this.eventModel, this.htmlModel, this.planTaskService, this.respManager, this.formManager);
-    }
-    App.prototype.init = function () {
-        var res1 = this.respManager.create("Mary");
-        var res2 = this.respManager.create("John");
-        res1.save();
-        res2.save();
-        this.taskManager.createNew("Buy the milk", res1.getId()).save();
-        this.taskManager.createNew("Buy the fish", res1.getId()).save();
-        this.formManager.getForm().withRespId(res1.getId()).save();
-        return this;
-    };
-    App.prototype.run = function () {
-        this.renderTodoService.rerender();
-    };
-    return App;
-}());
-exports.App = App;
-
-},{"./plan-tasks-domain/PlanTasksService":2,"./render-todo-domain/RenderTodoDomain":3,"./renderer/EventModel":7,"./renderer/HtmlModel":8,"./renderer/RenderModel":9,"./storage/managers/FormManager":10,"./storage/managers/RespManager":11,"./storage/managers/TaskManager":12}],2:[function(require,module,exports){
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.PlanTaskService = void 0;
-var assert_1 = __importDefault(require("assert"));
-var PlanTaskService = /** @class */ (function () {
-    function PlanTaskService(formManag, respManag, taskMang) {
-        var _this = this;
-        this.addTask = function () {
-            var form = _this.formManag.getForm();
-            assert_1.default.ok(_this.checkForm(form));
-            var task = _this.taskMang.createNew(form.getName(), form.getRespId());
-            task.save();
-            _this.resetForm(form).save();
-        };
-        this.switchTask = function (taskId) {
-            var task = _this.taskMang.getOne(taskId);
-            task.withSwitchedReady().save();
-        };
-        this.checkForm = function (form) {
-            return _this.respManag.isRespExist(form.getRespId())
-                && (form.getName().length > 0);
-        };
-        this.resetForm = function (form) {
-            return form
-                .withName("")
-                .withRespId(_this.respManag.getDefault().getId());
-        };
-        this.formManag = formManag;
-        this.respManag = respManag;
-        this.taskMang = taskMang;
-    }
-    return PlanTaskService;
-}());
-exports.PlanTaskService = PlanTaskService;
-
-},{"assert":16}],3:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RenderTodoDomain = void 0;
+exports.TodoService = void 0;
+var StateManager_1 = require("./models/StateManager");
 var FormWidget_1 = require("./widgets/FormWidget");
-var RespWidget_1 = require("./widgets/RespWidget");
 var TaskWidget_1 = require("./widgets/TaskWidget");
-var RenderTodoDomain = /** @class */ (function () {
-    function RenderTodoDomain(renderModel, eventModel, htmlModel, planTaskModel, respManager, formManager) {
-        var _this = this;
-        this.rerender = function () {
-            _this.renderResps();
-            _this.renderForm();
-        };
-        this.renderModel = renderModel;
-        this.eventModel = eventModel;
-        this.htmlModel = htmlModel;
-        this.planTaskModel = planTaskModel;
-        this.respManager = respManager;
-        this.formManager = formManager;
+var uuid_1 = require("uuid");
+var TodoService = /** @class */ (function () {
+    function TodoService(initData) {
+        this.stateManager = new StateManager_1.StateManager(new FormWidget_1.FormWidget(initData[0].getId(), ''), initData);
     }
-    RenderTodoDomain.prototype.renderForm = function () {
-        var _this = this;
-        var form = this.formManager.getForm();
-        console.log(this.htmlModel);
-        var formWidgetHtml = (new FormWidget_1.FormWidget(form.getName(), form.getRespId(), this.htmlModel.formSubmitBtnId(), this.htmlModel.formInputId(), this.htmlModel.formSelectId(), this.getResponsiblesRecord())).render();
-        this.renderModel.renderInFormHost(formWidgetHtml);
-        this.eventModel.setOnChangeAction('#' + this.htmlModel.formInputId(), function () {
-            _this.formManager.getForm().withName(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formInputId(), 'value')).save();
-            _this.rerender();
-        });
-        this.eventModel.setOnChangeAction('#' + this.htmlModel.formSelectId(), function () {
-            _this.formManager.getForm().withRespId(_this.htmlModel.attributeOfHtmlEl('#' + _this.htmlModel.formSelectId(), 'value')).save();
-            _this.rerender();
-        });
-        this.eventModel.setOnclickAction('#' + this.htmlModel.formSubmitBtnId(), function () {
-            _this.planTaskModel.addTask();
-            _this.rerender();
-        });
+    TodoService.prototype.printFormHtml = function () {
+        return this.stateManager.getForm().render(this.stateManager.getRespsAsRecord());
     };
-    RenderTodoDomain.prototype.renderResps = function () {
-        var _this = this;
-        var resps = this.respManager.getAll();
-        var respWidgetsHtml = resps.map(function (r) { return (new RespWidget_1.RespWidget(r.getName(), r.getTasks().map(function (t) { return (new TaskWidget_1.TaskWidget(t.getName(), t.isReady(), _this.htmlModel.taskContainerId(t.getId()))).render(); }).join(''), _this.htmlModel.respContainerid(r.getId())).render()); }).join('');
-        this.renderModel.renderInRespsHost(respWidgetsHtml);
-        resps.forEach(function (r) { return r.getTasks().forEach(function (t) { return _this.eventModel.setOnclickAction('#' + _this.htmlModel.taskContainerId(t.getId()), function () {
-            _this.planTaskModel.switchTask(t.getId());
-            _this.rerender();
-        }); }); });
+    TodoService.prototype.printRespsHtml = function () {
+        return this.stateManager.getResps()
+            .map(function (r) { return r.render(); })
+            .join();
     };
-    RenderTodoDomain.prototype.getResponsiblesRecord = function () {
+    TodoService.prototype.setFormName = function (name) {
+        this.stateManager.getForm().setName(name);
+    };
+    TodoService.prototype.applyForm = function () {
+        this.stateManager.updateResp(this.stateManager.getOneResp(this.stateManager.getForm().getResId()).addTask(new TaskWidget_1.TaskWidget((0, uuid_1.v4)(), this.stateManager.getForm().getName(), false)));
+    };
+    TodoService.prototype.switchTask = function (id) {
+        var resp = this.stateManager.getRespByTaskId(id);
+        resp.switchTask(id);
+        this.stateManager.updateResp(resp);
+    };
+    TodoService.prototype.formInputSelector = function () {
+        return '#' + FormWidget_1.FormWidget.formInputId;
+    };
+    TodoService.prototype.formBtnSelector = function () {
+        return '#' + FormWidget_1.FormWidget.submitBtnId;
+    };
+    TodoService.prototype.getAllTaskSelectors = function () {
         var result = {};
-        this.respManager.getAll().forEach(function (r) {
-            result[r.getId()] = r.getName();
+        this.stateManager.getResps().forEach(function (r) {
+            r.getTasks().forEach(function (t) {
+                result[t.getId()] = '#' + t.getContainerId();
+            });
         });
         return result;
     };
-    return RenderTodoDomain;
+    return TodoService;
 }());
-exports.RenderTodoDomain = RenderTodoDomain;
+exports.TodoService = TodoService;
 
-},{"./widgets/FormWidget":4,"./widgets/RespWidget":5,"./widgets/TaskWidget":6}],4:[function(require,module,exports){
+},{"./models/StateManager":2,"./widgets/FormWidget":3,"./widgets/TaskWidget":5,"uuid":7}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StateManager = void 0;
+var StateManager = /** @class */ (function () {
+    function StateManager(form, resps) {
+        this.form = form;
+        this.resps = resps;
+    }
+    StateManager.prototype.updateFormName = function (name) {
+        this.form.setName(name);
+    };
+    StateManager.prototype.getForm = function () {
+        return this.form;
+    };
+    StateManager.prototype.getResps = function () {
+        return this.resps;
+    };
+    StateManager.prototype.getRespByTaskId = function (taskId) {
+        var result = this.resps.filter(function (el) { return el.hasTask(taskId); });
+        if (!result[0]) {
+            throw new Error("Can't find resp by taskId: " + taskId);
+        }
+        return result[0];
+    };
+    StateManager.prototype.getOneResp = function (id) {
+        var result = this.resps.filter(function (el) { return el.getId() === id; });
+        if (!result[0]) {
+            throw new Error("Can't find resp with id: " + id);
+        }
+        return result[0];
+    };
+    StateManager.prototype.updateResp = function (resp) {
+        if (this.resps.filter(function (r) { return r.getId() === resp.getId(); }).length === 0) {
+            throw new Error("Invalid responsible widget resId");
+        }
+        this.resps = this.resps.map(function (el) { return (el.getId() === resp.getId())
+            ? resp
+            : el; });
+    };
+    StateManager.prototype.getRespsAsRecord = function () {
+        var result = {};
+        this.resps.forEach(function (el) {
+            result[el.getId()] = el.getName();
+        });
+        return result;
+    };
+    return StateManager;
+}());
+exports.StateManager = StateManager;
+
+},{}],3:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FormWidget = void 0;
 var FormWidget = /** @class */ (function () {
-    function FormWidget(name, resId, btnId, inputId, selectId, allResps) {
-        this.name = name;
+    function FormWidget(resId, name) {
         this.resId = resId;
-        this.btnId = btnId;
-        this.inputId = inputId;
-        this.selectId = selectId;
-        this.allResps = allResps;
+        this.name = name;
     }
+    FormWidget.prototype.setName = function (name) {
+        this.name = name;
+    };
     FormWidget.prototype.renderSelected = function (k) {
         return (this.resId === k)
             ? ' selected'
             : '';
     };
-    FormWidget.prototype.render = function () {
-        var _this = this;
-        var options = Object.keys(this.allResps)
-            .map(function (k) { return "<option value=\"".concat(k, "\"").concat(_this.renderSelected(k), ">")
-            + "".concat(_this.allResps[k], "</option>"); });
-        return "<div>\n            <input type=\"text\" id=\"".concat(this.inputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(this.selectId, "\">").concat(options, "</select>\n            <button id=\"").concat(this.btnId, "\">Submit</button>\n        </div>");
+    FormWidget.prototype.getResId = function () {
+        return this.resId;
     };
+    FormWidget.prototype.getName = function () {
+        return this.name;
+    };
+    FormWidget.prototype.render = function (allResps) {
+        var _this = this;
+        var options = Object.keys(allResps)
+            .map(function (k) { return "<option value=\"".concat(k, "\"").concat(_this.renderSelected(k), ">")
+            + "".concat(allResps[k], "</option>"); });
+        return "<div>\n            <input type=\"text\" id=\"".concat(FormWidget.formInputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(FormWidget.formSelectId, "\">").concat(options, "</select>\n            <button id=\"").concat(FormWidget.submitBtnId, "\">Submit</button>\n        </div>");
+    };
+    FormWidget.formInputId = 'form-input';
+    FormWidget.formSelectId = 'form-select-id';
+    FormWidget.submitBtnId = 'submit-btn-id';
     return FormWidget;
 }());
 exports.FormWidget = FormWidget;
 
-},{}],5:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RespWidget = void 0;
 var RespWidget = /** @class */ (function () {
-    function RespWidget(name, tasks, containerId) {
+    function RespWidget(id, name, tasks) {
+        this.id = id;
         this.name = name;
         this.tasks = tasks;
-        this.containerId = containerId;
     }
+    RespWidget.prototype.getId = function () {
+        return this.id;
+    };
+    RespWidget.prototype.getName = function () {
+        return this.name;
+    };
+    RespWidget.prototype.getContainerId = function () {
+        return 'resp-' + this.id;
+    };
+    RespWidget.prototype.withName = function (name) {
+        return new RespWidget(this.id, name, this.tasks);
+    };
+    RespWidget.prototype.addTask = function (task) {
+        return new RespWidget(this.id, this.name, this.tasks.concat([task]));
+    };
+    RespWidget.prototype.hasTask = function (id) {
+        return this.tasks.filter(function (el) { return el.getId() === id; }).length > 0;
+    };
+    RespWidget.prototype.switchTask = function (id) {
+        this.tasks = this.tasks.map(function (el) { return (el.getId() === id)
+            ? el.switched()
+            : el; });
+    };
+    RespWidget.prototype.getTasks = function () {
+        return this.tasks;
+    };
     RespWidget.prototype.render = function () {
-        return "\n        <ul id=\"".concat(this.containerId, "\">\n            <li><b>").concat(this.name, "</b></li>\n            <ul>").concat(this.tasks, "</ul>\n        </ul>");
+        return "\n        <ul id=\"".concat(this.getContainerId(), "\">\n            <li><b>").concat(this.name, "</b></li>\n            <ul>").concat(this.tasks.map(function (t) { return t.render(); }).join(''), "</ul>\n        </ul>");
     };
     return RespWidget;
 }());
 exports.RespWidget = RespWidget;
 
-},{}],6:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaskWidget = void 0;
 var TaskWidget = /** @class */ (function () {
-    function TaskWidget(name, isReady, containerId) {
+    function TaskWidget(id, name, isReady) {
+        this.id = id;
         this.name = name;
         this.isReady = isReady;
-        this.containerId = containerId;
     }
+    TaskWidget.prototype.getId = function () {
+        return this.id;
+    };
+    TaskWidget.prototype.switched = function () {
+        return new TaskWidget(this.id, this.name, !this.isReady);
+    };
+    TaskWidget.prototype.getName = function () {
+        return this.name;
+    };
     TaskWidget.prototype.inBold = function (s) {
         return "<b>".concat(s, "</b>");
     };
+    TaskWidget.prototype.getContainerId = function () {
+        return 'task-' + this.id;
+    };
     TaskWidget.prototype.render = function () {
-        return "\n        <li id=\"".concat(this.containerId, "\">").concat(this.isReady ? this.inBold(this.name) : this.name, "</li>");
+        return "\n        <li id=\"".concat(this.getContainerId(), "\">").concat(this.isReady ? this.inBold(this.name) : this.name, "</li>");
     };
     return TaskWidget;
 }());
 exports.TaskWidget = TaskWidget;
 
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EventModel = void 0;
-var EventModel = /** @class */ (function () {
-    function EventModel() {
+var TodoService_1 = require("../domain/TodoService");
+var RespWidget_1 = require("../domain/widgets/RespWidget");
+var TaskWidget_1 = require("../domain/widgets/TaskWidget");
+var initData = [
+    new RespWidget_1.RespWidget('afda59c8-29f0-4795-93be-2d744d62b6ad', "Mary", [
+        new TaskWidget_1.TaskWidget('18e53e29-787f-4696-9a00-34d8e9202ded', 'Groome the cat', false),
+        new TaskWidget_1.TaskWidget('0d70fb23-ca9f-416e-aaa1-ee40ceae8045', 'Feed birds', true)
+    ]),
+    new RespWidget_1.RespWidget('0729e625-1f3c-49d3-90c2-8c9cf4a487d6', "Bob", [
+        new TaskWidget_1.TaskWidget('59586d15-0604-49ca-90cc-32c116ffb66a', "Solve equation", false)
+    ])
+];
+var todoService = new TodoService_1.TodoService(initData);
+function querySelect(selector) {
+    var htmlEl = document.querySelector(selector);
+    if (!(htmlEl instanceof HTMLElement)) {
+        throw new Error("Invalid HTML element '".concat(selector, "': ") + JSON.stringify(htmlEl));
     }
-    EventModel.prototype.setOnclickAction = function (host, action) {
-        var el = document.querySelector(host);
-        if (!!el) {
-            el.onclick = function () { action(); };
-        }
-    };
-    EventModel.prototype.setOnChangeAction = function (host, action) {
-        var el = document.querySelector(host);
-        if (!!el) {
-            el.onchange = function () { action(); };
-        }
-    };
-    return EventModel;
-}());
-exports.EventModel = EventModel;
-
-},{}],8:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.HtmlModel = void 0;
-var HtmlModel = /** @class */ (function () {
-    function HtmlModel() {
+    return htmlEl;
+}
+function assertHtmlInput(htmlEl) {
+    if (!(htmlEl instanceof HTMLInputElement)) {
+        throw new Error("HTML element is not input: " + JSON.stringify(htmlEl));
     }
-    HtmlModel.prototype.taskContainerId = function (taskId) {
-        return 'task-cont-' + taskId;
-    };
-    HtmlModel.prototype.formInputId = function () { return 'form-input'; };
-    HtmlModel.prototype.formSelectId = function () { return 'form-select'; };
-    HtmlModel.prototype.formSubmitBtnId = function () { return 'form-submit'; };
-    HtmlModel.prototype.respContainerid = function (respId) {
-        return 'resp-cont-' + respId;
-    };
-    HtmlModel.prototype.attributeOfHtmlEl = function (selector, attrName) {
-        try {
-            var el = document.querySelector(selector);
-            if (attrName === 'value') {
-                return el.value;
-            }
-            else {
-                el.getAttribute(attrName);
-            }
-        }
-        catch (e) {
-            return null;
-        }
-    };
-    return HtmlModel;
-}());
-exports.HtmlModel = HtmlModel;
-
-},{}],9:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RenderModel = void 0;
-var RenderModel = /** @class */ (function () {
-    function RenderModel() {
-    }
-    RenderModel.prototype.renderInFormHost = function (html) {
-        document.querySelector('#form-host').innerHTML = html;
-    };
-    RenderModel.prototype.renderInRespsHost = function (html) {
-        document.querySelector('#resps-host').innerHTML = html;
-    };
-    return RenderModel;
-}());
-exports.RenderModel = RenderModel;
-
-},{}],10:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FormManager = void 0;
-var FormRec_1 = require("../records/FormRec");
-var store = {
-    f: (new FormRec_1.FormRec('', '', function (f) { store.f = f; }))
-};
-var save = function (f) { store.f = f; };
-var FormManager = /** @class */ (function () {
-    function FormManager() {
-    }
-    FormManager.prototype.getForm = function () {
-        return store.f;
-    };
-    return FormManager;
-}());
-exports.FormManager = FormManager;
-
-},{"../records/FormRec":13}],11:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RespManager = void 0;
-var RespRec_1 = require("../records/RespRec");
-var uuid_1 = require("uuid");
-var store = {};
-var save = function (r) {
-    store[r.getId()] = r;
-};
-var RespManager = /** @class */ (function () {
-    function RespManager(taskManager) {
-        this.taskManager = taskManager;
-    }
-    RespManager.prototype.getAll = function () {
-        return Object.values(store);
-    };
-    RespManager.prototype.create = function (name) {
-        var _this = this;
-        return new RespRec_1.RespRec((0, uuid_1.v4)(), name, save, function (resId) { return _this.taskManager.getManyByResId(resId); });
-    };
-    RespManager.prototype.isRespExist = function (id) {
-        return Object.keys(store).includes(id);
-    };
-    RespManager.prototype.getDefault = function () {
-        return store[Object.keys(store)[0]];
-    };
-    return RespManager;
-}());
-exports.RespManager = RespManager;
-
-},{"../records/RespRec":14,"uuid":22}],12:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TaskManager = void 0;
-var TaskRec_1 = require("../records/TaskRec");
-var uuid_1 = require("uuid");
-var store = {};
-var save = function (task) {
-    store[task.getId()] = task;
-};
-var TaskManager = /** @class */ (function () {
-    function TaskManager() {
-    }
-    TaskManager.prototype.createNew = function (name, respId) {
-        return new TaskRec_1.TaskRec((0, uuid_1.v4)(), respId, name, false, save);
-    };
-    TaskManager.prototype.getOne = function (id) {
-        return store[id];
-    };
-    TaskManager.prototype.getManyByResId = function (resId) {
-        return Object.values(store)
-            .filter(function (el) { return (el.getRespId() === resId); });
-    };
-    return TaskManager;
-}());
-exports.TaskManager = TaskManager;
-
-},{"../records/TaskRec":15,"uuid":22}],13:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FormRec = void 0;
-var FormRec = /** @class */ (function () {
-    function FormRec(name, resId, saver) {
-        this.name = name;
-        this.resId = resId;
-        this.saver = saver;
-    }
-    FormRec.prototype.getName = function () {
-        return this.name;
-    };
-    FormRec.prototype.getRespId = function () {
-        return this.resId;
-    };
-    FormRec.prototype.withName = function (name) {
-        return new FormRec(name, this.resId, this.saver);
-    };
-    FormRec.prototype.withRespId = function (id) {
-        return new FormRec(this.name, id, this.saver);
-    };
-    FormRec.prototype.save = function () {
-        console.log("saving form:", this);
-        this.saver(this);
-    };
-    return FormRec;
-}());
-exports.FormRec = FormRec;
-
-},{}],14:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RespRec = void 0;
-var RespRec = /** @class */ (function () {
-    function RespRec(id, name, saver, tasksRepo) {
-        this.id = id;
-        this.name = name;
-        this.saver = saver;
-        this.tasksRepo = tasksRepo;
-    }
-    RespRec.prototype.getId = function () {
-        return this.id;
-    };
-    RespRec.prototype.getName = function () {
-        return this.name;
-    };
-    RespRec.prototype.getTasks = function () {
-        return this.tasksRepo(this.id);
-    };
-    RespRec.prototype.save = function () {
-        this.saver(this);
-    };
-    return RespRec;
-}());
-exports.RespRec = RespRec;
-
-},{}],15:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TaskRec = void 0;
-var TaskRec = /** @class */ (function () {
-    function TaskRec(id, resId, name, ready, saver) {
-        this.id = id;
-        this.resId = resId;
-        this.name = name;
-        this.ready = ready;
-        this.saver = saver;
-    }
-    TaskRec.prototype.getId = function () {
-        return this.id;
-    };
-    TaskRec.prototype.getName = function () {
-        return this.name;
-    };
-    TaskRec.prototype.getRespId = function () {
-        return this.resId;
-    };
-    TaskRec.prototype.isReady = function () {
-        return this.ready;
-    };
-    TaskRec.prototype.withSwitchedReady = function () {
-        return new TaskRec(this.id, this.resId, this.name, !this.ready, this.saver);
-    };
-    TaskRec.prototype.save = function () {
-        this.saver(this);
-    };
-    return TaskRec;
-}());
-exports.TaskRec = TaskRec;
-
-},{}],16:[function(require,module,exports){
-(function (global){(function (){
-'use strict';
-
-var objectAssign = require('object-assign');
-
-// compare and isBuffer taken from https://github.com/feross/buffer/blob/680e9e5e488f22aac27599a57dc844a6315928dd/index.js
-// original notice:
-
-/*!
- * The buffer module from node.js, for the browser.
- *
- * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
- * @license  MIT
- */
-function compare(a, b) {
-  if (a === b) {
-    return 0;
-  }
-
-  var x = a.length;
-  var y = b.length;
-
-  for (var i = 0, len = Math.min(x, y); i < len; ++i) {
-    if (a[i] !== b[i]) {
-      x = a[i];
-      y = b[i];
-      break;
-    }
-  }
-
-  if (x < y) {
-    return -1;
-  }
-  if (y < x) {
-    return 1;
-  }
-  return 0;
+    return htmlEl;
 }
-function isBuffer(b) {
-  if (global.Buffer && typeof global.Buffer.isBuffer === 'function') {
-    return global.Buffer.isBuffer(b);
-  }
-  return !!(b != null && b._isBuffer);
-}
-
-// based on node assert, original notice:
-// NB: The URL to the CommonJS spec is kept just for tradition.
-//     node-assert has evolved a lot since then, both in API and behavior.
-
-// http://wiki.commonjs.org/wiki/Unit_Testing/1.0
-//
-// THIS IS NOT TESTED NOR LIKELY TO WORK OUTSIDE V8!
-//
-// Originally from narwhal.js (http://narwhaljs.org)
-// Copyright (c) 2009 Thomas Robinson <280north.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the 'Software'), to
-// deal in the Software without restriction, including without limitation the
-// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-// sell copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var util = require('util/');
-var hasOwn = Object.prototype.hasOwnProperty;
-var pSlice = Array.prototype.slice;
-var functionsHaveNames = (function () {
-  return function foo() {}.name === 'foo';
-}());
-function pToString (obj) {
-  return Object.prototype.toString.call(obj);
-}
-function isView(arrbuf) {
-  if (isBuffer(arrbuf)) {
-    return false;
-  }
-  if (typeof global.ArrayBuffer !== 'function') {
-    return false;
-  }
-  if (typeof ArrayBuffer.isView === 'function') {
-    return ArrayBuffer.isView(arrbuf);
-  }
-  if (!arrbuf) {
-    return false;
-  }
-  if (arrbuf instanceof DataView) {
-    return true;
-  }
-  if (arrbuf.buffer && arrbuf.buffer instanceof ArrayBuffer) {
-    return true;
-  }
-  return false;
-}
-// 1. The assert module provides functions that throw
-// AssertionError's when particular conditions are not met. The
-// assert module must conform to the following interface.
-
-var assert = module.exports = ok;
-
-// 2. The AssertionError is defined in assert.
-// new assert.AssertionError({ message: message,
-//                             actual: actual,
-//                             expected: expected })
-
-var regex = /\s*function\s+([^\(\s]*)\s*/;
-// based on https://github.com/ljharb/function.prototype.name/blob/adeeeec8bfcc6068b187d7d9fb3d5bb1d3a30899/implementation.js
-function getName(func) {
-  if (!util.isFunction(func)) {
-    return;
-  }
-  if (functionsHaveNames) {
-    return func.name;
-  }
-  var str = func.toString();
-  var match = str.match(regex);
-  return match && match[1];
-}
-assert.AssertionError = function AssertionError(options) {
-  this.name = 'AssertionError';
-  this.actual = options.actual;
-  this.expected = options.expected;
-  this.operator = options.operator;
-  if (options.message) {
-    this.message = options.message;
-    this.generatedMessage = false;
-  } else {
-    this.message = getMessage(this);
-    this.generatedMessage = true;
-  }
-  var stackStartFunction = options.stackStartFunction || fail;
-  if (Error.captureStackTrace) {
-    Error.captureStackTrace(this, stackStartFunction);
-  } else {
-    // non v8 browsers so we can have a stacktrace
-    var err = new Error();
-    if (err.stack) {
-      var out = err.stack;
-
-      // try to strip useless frames
-      var fn_name = getName(stackStartFunction);
-      var idx = out.indexOf('\n' + fn_name);
-      if (idx >= 0) {
-        // once we have located the function frame
-        // we need to strip out everything before it (and its line)
-        var next_line = out.indexOf('\n', idx + 1);
-        out = out.substring(next_line + 1);
-      }
-
-      this.stack = out;
-    }
-  }
-};
-
-// assert.AssertionError instanceof Error
-util.inherits(assert.AssertionError, Error);
-
-function truncate(s, n) {
-  if (typeof s === 'string') {
-    return s.length < n ? s : s.slice(0, n);
-  } else {
-    return s;
-  }
-}
-function inspect(something) {
-  if (functionsHaveNames || !util.isFunction(something)) {
-    return util.inspect(something);
-  }
-  var rawname = getName(something);
-  var name = rawname ? ': ' + rawname : '';
-  return '[Function' +  name + ']';
-}
-function getMessage(self) {
-  return truncate(inspect(self.actual), 128) + ' ' +
-         self.operator + ' ' +
-         truncate(inspect(self.expected), 128);
-}
-
-// At present only the three keys mentioned above are used and
-// understood by the spec. Implementations or sub modules can pass
-// other keys to the AssertionError's constructor - they will be
-// ignored.
-
-// 3. All of the following functions must throw an AssertionError
-// when a corresponding condition is not met, with a message that
-// may be undefined if not provided.  All assertion methods provide
-// both the actual and expected values to the assertion error for
-// display purposes.
-
-function fail(actual, expected, message, operator, stackStartFunction) {
-  throw new assert.AssertionError({
-    message: message,
-    actual: actual,
-    expected: expected,
-    operator: operator,
-    stackStartFunction: stackStartFunction
-  });
-}
-
-// EXTENSION! allows for well behaved errors defined elsewhere.
-assert.fail = fail;
-
-// 4. Pure assertion tests whether a value is truthy, as determined
-// by !!guard.
-// assert.ok(guard, message_opt);
-// This statement is equivalent to assert.equal(true, !!guard,
-// message_opt);. To test strictly for the value true, use
-// assert.strictEqual(true, guard, message_opt);.
-
-function ok(value, message) {
-  if (!value) fail(value, true, message, '==', assert.ok);
-}
-assert.ok = ok;
-
-// 5. The equality assertion tests shallow, coercive equality with
-// ==.
-// assert.equal(actual, expected, message_opt);
-
-assert.equal = function equal(actual, expected, message) {
-  if (actual != expected) fail(actual, expected, message, '==', assert.equal);
-};
-
-// 6. The non-equality assertion tests for whether two objects are not equal
-// with != assert.notEqual(actual, expected, message_opt);
-
-assert.notEqual = function notEqual(actual, expected, message) {
-  if (actual == expected) {
-    fail(actual, expected, message, '!=', assert.notEqual);
-  }
-};
-
-// 7. The equivalence assertion tests a deep equality relation.
-// assert.deepEqual(actual, expected, message_opt);
-
-assert.deepEqual = function deepEqual(actual, expected, message) {
-  if (!_deepEqual(actual, expected, false)) {
-    fail(actual, expected, message, 'deepEqual', assert.deepEqual);
-  }
-};
-
-assert.deepStrictEqual = function deepStrictEqual(actual, expected, message) {
-  if (!_deepEqual(actual, expected, true)) {
-    fail(actual, expected, message, 'deepStrictEqual', assert.deepStrictEqual);
-  }
-};
-
-function _deepEqual(actual, expected, strict, memos) {
-  // 7.1. All identical values are equivalent, as determined by ===.
-  if (actual === expected) {
-    return true;
-  } else if (isBuffer(actual) && isBuffer(expected)) {
-    return compare(actual, expected) === 0;
-
-  // 7.2. If the expected value is a Date object, the actual value is
-  // equivalent if it is also a Date object that refers to the same time.
-  } else if (util.isDate(actual) && util.isDate(expected)) {
-    return actual.getTime() === expected.getTime();
-
-  // 7.3 If the expected value is a RegExp object, the actual value is
-  // equivalent if it is also a RegExp object with the same source and
-  // properties (`global`, `multiline`, `lastIndex`, `ignoreCase`).
-  } else if (util.isRegExp(actual) && util.isRegExp(expected)) {
-    return actual.source === expected.source &&
-           actual.global === expected.global &&
-           actual.multiline === expected.multiline &&
-           actual.lastIndex === expected.lastIndex &&
-           actual.ignoreCase === expected.ignoreCase;
-
-  // 7.4. Other pairs that do not both pass typeof value == 'object',
-  // equivalence is determined by ==.
-  } else if ((actual === null || typeof actual !== 'object') &&
-             (expected === null || typeof expected !== 'object')) {
-    return strict ? actual === expected : actual == expected;
-
-  // If both values are instances of typed arrays, wrap their underlying
-  // ArrayBuffers in a Buffer each to increase performance
-  // This optimization requires the arrays to have the same type as checked by
-  // Object.prototype.toString (aka pToString). Never perform binary
-  // comparisons for Float*Arrays, though, since e.g. +0 === -0 but their
-  // bit patterns are not identical.
-  } else if (isView(actual) && isView(expected) &&
-             pToString(actual) === pToString(expected) &&
-             !(actual instanceof Float32Array ||
-               actual instanceof Float64Array)) {
-    return compare(new Uint8Array(actual.buffer),
-                   new Uint8Array(expected.buffer)) === 0;
-
-  // 7.5 For all other Object pairs, including Array objects, equivalence is
-  // determined by having the same number of owned properties (as verified
-  // with Object.prototype.hasOwnProperty.call), the same set of keys
-  // (although not necessarily the same order), equivalent values for every
-  // corresponding key, and an identical 'prototype' property. Note: this
-  // accounts for both named and indexed properties on Arrays.
-  } else if (isBuffer(actual) !== isBuffer(expected)) {
-    return false;
-  } else {
-    memos = memos || {actual: [], expected: []};
-
-    var actualIndex = memos.actual.indexOf(actual);
-    if (actualIndex !== -1) {
-      if (actualIndex === memos.expected.indexOf(expected)) {
-        return true;
-      }
-    }
-
-    memos.actual.push(actual);
-    memos.expected.push(expected);
-
-    return objEquiv(actual, expected, strict, memos);
-  }
-}
-
-function isArguments(object) {
-  return Object.prototype.toString.call(object) == '[object Arguments]';
-}
-
-function objEquiv(a, b, strict, actualVisitedObjects) {
-  if (a === null || a === undefined || b === null || b === undefined)
-    return false;
-  // if one is a primitive, the other must be same
-  if (util.isPrimitive(a) || util.isPrimitive(b))
-    return a === b;
-  if (strict && Object.getPrototypeOf(a) !== Object.getPrototypeOf(b))
-    return false;
-  var aIsArgs = isArguments(a);
-  var bIsArgs = isArguments(b);
-  if ((aIsArgs && !bIsArgs) || (!aIsArgs && bIsArgs))
-    return false;
-  if (aIsArgs) {
-    a = pSlice.call(a);
-    b = pSlice.call(b);
-    return _deepEqual(a, b, strict);
-  }
-  var ka = objectKeys(a);
-  var kb = objectKeys(b);
-  var key, i;
-  // having the same number of owned properties (keys incorporates
-  // hasOwnProperty)
-  if (ka.length !== kb.length)
-    return false;
-  //the same set of keys (although not necessarily the same order),
-  ka.sort();
-  kb.sort();
-  //~~~cheap key test
-  for (i = ka.length - 1; i >= 0; i--) {
-    if (ka[i] !== kb[i])
-      return false;
-  }
-  //equivalent values for every corresponding key, and
-  //~~~possibly expensive deep test
-  for (i = ka.length - 1; i >= 0; i--) {
-    key = ka[i];
-    if (!_deepEqual(a[key], b[key], strict, actualVisitedObjects))
-      return false;
-  }
-  return true;
-}
-
-// 8. The non-equivalence assertion tests for any deep inequality.
-// assert.notDeepEqual(actual, expected, message_opt);
-
-assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
-  if (_deepEqual(actual, expected, false)) {
-    fail(actual, expected, message, 'notDeepEqual', assert.notDeepEqual);
-  }
-};
-
-assert.notDeepStrictEqual = notDeepStrictEqual;
-function notDeepStrictEqual(actual, expected, message) {
-  if (_deepEqual(actual, expected, true)) {
-    fail(actual, expected, message, 'notDeepStrictEqual', notDeepStrictEqual);
-  }
-}
-
-
-// 9. The strict equality assertion tests strict equality, as determined by ===.
-// assert.strictEqual(actual, expected, message_opt);
-
-assert.strictEqual = function strictEqual(actual, expected, message) {
-  if (actual !== expected) {
-    fail(actual, expected, message, '===', assert.strictEqual);
-  }
-};
-
-// 10. The strict non-equality assertion tests for strict inequality, as
-// determined by !==.  assert.notStrictEqual(actual, expected, message_opt);
-
-assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
-  if (actual === expected) {
-    fail(actual, expected, message, '!==', assert.notStrictEqual);
-  }
-};
-
-function expectedException(actual, expected) {
-  if (!actual || !expected) {
-    return false;
-  }
-
-  if (Object.prototype.toString.call(expected) == '[object RegExp]') {
-    return expected.test(actual);
-  }
-
-  try {
-    if (actual instanceof expected) {
-      return true;
-    }
-  } catch (e) {
-    // Ignore.  The instanceof check doesn't work for arrow functions.
-  }
-
-  if (Error.isPrototypeOf(expected)) {
-    return false;
-  }
-
-  return expected.call({}, actual) === true;
-}
-
-function _tryBlock(block) {
-  var error;
-  try {
-    block();
-  } catch (e) {
-    error = e;
-  }
-  return error;
-}
-
-function _throws(shouldThrow, block, expected, message) {
-  var actual;
-
-  if (typeof block !== 'function') {
-    throw new TypeError('"block" argument must be a function');
-  }
-
-  if (typeof expected === 'string') {
-    message = expected;
-    expected = null;
-  }
-
-  actual = _tryBlock(block);
-
-  message = (expected && expected.name ? ' (' + expected.name + ').' : '.') +
-            (message ? ' ' + message : '.');
-
-  if (shouldThrow && !actual) {
-    fail(actual, expected, 'Missing expected exception' + message);
-  }
-
-  var userProvidedMessage = typeof message === 'string';
-  var isUnwantedException = !shouldThrow && util.isError(actual);
-  var isUnexpectedException = !shouldThrow && actual && !expected;
-
-  if ((isUnwantedException &&
-      userProvidedMessage &&
-      expectedException(actual, expected)) ||
-      isUnexpectedException) {
-    fail(actual, expected, 'Got unwanted exception' + message);
-  }
-
-  if ((shouldThrow && actual && expected &&
-      !expectedException(actual, expected)) || (!shouldThrow && actual)) {
-    throw actual;
-  }
-}
-
-// 11. Expected to throw an error:
-// assert.throws(block, Error_opt, message_opt);
-
-assert.throws = function(block, /*optional*/error, /*optional*/message) {
-  _throws(true, block, error, message);
-};
-
-// EXTENSION! This is annoying to write outside this module.
-assert.doesNotThrow = function(block, /*optional*/error, /*optional*/message) {
-  _throws(false, block, error, message);
-};
-
-assert.ifError = function(err) { if (err) throw err; };
-
-// Expose a strict only variant of assert
-function strict(value, message) {
-  if (!value) fail(value, true, message, '==', strict);
-}
-assert.strict = objectAssign(strict, assert, {
-  equal: assert.strictEqual,
-  deepEqual: assert.deepStrictEqual,
-  notEqual: assert.notStrictEqual,
-  notDeepEqual: assert.notDeepStrictEqual
-});
-assert.strict.strict = assert.strict;
-
-var objectKeys = Object.keys || function (obj) {
-  var keys = [];
-  for (var key in obj) {
-    if (hasOwn.call(obj, key)) keys.push(key);
-  }
-  return keys;
-};
-
-}).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"object-assign":20,"util/":19}],17:[function(require,module,exports){
-if (typeof Object.create === 'function') {
-  // implementation from standard node.js 'util' module
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    ctor.prototype = Object.create(superCtor.prototype, {
-      constructor: {
-        value: ctor,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
+function renderResps() {
+    querySelect('#resps-host').innerHTML = todoService.printRespsHtml();
+    var allTaskSelectors = todoService.getAllTaskSelectors();
+    Object.keys(allTaskSelectors).forEach(function (id) {
+        querySelect(allTaskSelectors[id]).onclick = function () {
+            todoService.switchTask(id);
+            renderResps();
+        };
     });
-  };
-} else {
-  // old school shim for old browsers
-  module.exports = function inherits(ctor, superCtor) {
-    ctor.super_ = superCtor
-    var TempCtor = function () {}
-    TempCtor.prototype = superCtor.prototype
-    ctor.prototype = new TempCtor()
-    ctor.prototype.constructor = ctor
-  }
 }
-
-},{}],18:[function(require,module,exports){
-module.exports = function isBuffer(arg) {
-  return arg && typeof arg === 'object'
-    && typeof arg.copy === 'function'
-    && typeof arg.fill === 'function'
-    && typeof arg.readUInt8 === 'function';
-}
-},{}],19:[function(require,module,exports){
-(function (process,global){(function (){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var formatRegExp = /%[sdj%]/g;
-exports.format = function(f) {
-  if (!isString(f)) {
-    var objects = [];
-    for (var i = 0; i < arguments.length; i++) {
-      objects.push(inspect(arguments[i]));
-    }
-    return objects.join(' ');
-  }
-
-  var i = 1;
-  var args = arguments;
-  var len = args.length;
-  var str = String(f).replace(formatRegExp, function(x) {
-    if (x === '%%') return '%';
-    if (i >= len) return x;
-    switch (x) {
-      case '%s': return String(args[i++]);
-      case '%d': return Number(args[i++]);
-      case '%j':
-        try {
-          return JSON.stringify(args[i++]);
-        } catch (_) {
-          return '[Circular]';
-        }
-      default:
-        return x;
-    }
-  });
-  for (var x = args[i]; i < len; x = args[++i]) {
-    if (isNull(x) || !isObject(x)) {
-      str += ' ' + x;
-    } else {
-      str += ' ' + inspect(x);
-    }
-  }
-  return str;
-};
-
-
-// Mark that a method should not be used.
-// Returns a modified function which warns once by default.
-// If --no-deprecation is set, then it is a no-op.
-exports.deprecate = function(fn, msg) {
-  // Allow for deprecating things in the process of starting up.
-  if (isUndefined(global.process)) {
-    return function() {
-      return exports.deprecate(fn, msg).apply(this, arguments);
+function renderForm() {
+    querySelect('#form-host').innerHTML = todoService.printFormHtml();
+    querySelect(todoService.formBtnSelector()).onclick = function () {
+        todoService.applyForm();
+        renderForm();
+        renderResps();
     };
-  }
-
-  if (process.noDeprecation === true) {
-    return fn;
-  }
-
-  var warned = false;
-  function deprecated() {
-    if (!warned) {
-      if (process.throwDeprecation) {
-        throw new Error(msg);
-      } else if (process.traceDeprecation) {
-        console.trace(msg);
-      } else {
-        console.error(msg);
-      }
-      warned = true;
-    }
-    return fn.apply(this, arguments);
-  }
-
-  return deprecated;
-};
-
-
-var debugs = {};
-var debugEnviron;
-exports.debuglog = function(set) {
-  if (isUndefined(debugEnviron))
-    debugEnviron = process.env.NODE_DEBUG || '';
-  set = set.toUpperCase();
-  if (!debugs[set]) {
-    if (new RegExp('\\b' + set + '\\b', 'i').test(debugEnviron)) {
-      var pid = process.pid;
-      debugs[set] = function() {
-        var msg = exports.format.apply(exports, arguments);
-        console.error('%s %d: %s', set, pid, msg);
-      };
-    } else {
-      debugs[set] = function() {};
-    }
-  }
-  return debugs[set];
-};
-
-
-/**
- * Echos the value of a value. Trys to print the value out
- * in the best way possible given the different types.
- *
- * @param {Object} obj The object to print out.
- * @param {Object} opts Optional options object that alters the output.
- */
-/* legacy: obj, showHidden, depth, colors*/
-function inspect(obj, opts) {
-  // default options
-  var ctx = {
-    seen: [],
-    stylize: stylizeNoColor
-  };
-  // legacy...
-  if (arguments.length >= 3) ctx.depth = arguments[2];
-  if (arguments.length >= 4) ctx.colors = arguments[3];
-  if (isBoolean(opts)) {
-    // legacy...
-    ctx.showHidden = opts;
-  } else if (opts) {
-    // got an "options" object
-    exports._extend(ctx, opts);
-  }
-  // set default options
-  if (isUndefined(ctx.showHidden)) ctx.showHidden = false;
-  if (isUndefined(ctx.depth)) ctx.depth = 2;
-  if (isUndefined(ctx.colors)) ctx.colors = false;
-  if (isUndefined(ctx.customInspect)) ctx.customInspect = true;
-  if (ctx.colors) ctx.stylize = stylizeWithColor;
-  return formatValue(ctx, obj, ctx.depth);
+    querySelect(todoService.formInputSelector()).onchange = function () {
+        todoService.setFormName(assertHtmlInput(querySelect(todoService.formInputSelector())).value);
+        renderForm();
+    };
 }
-exports.inspect = inspect;
+renderForm();
+renderResps();
 
-
-// http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
-inspect.colors = {
-  'bold' : [1, 22],
-  'italic' : [3, 23],
-  'underline' : [4, 24],
-  'inverse' : [7, 27],
-  'white' : [37, 39],
-  'grey' : [90, 39],
-  'black' : [30, 39],
-  'blue' : [34, 39],
-  'cyan' : [36, 39],
-  'green' : [32, 39],
-  'magenta' : [35, 39],
-  'red' : [31, 39],
-  'yellow' : [33, 39]
-};
-
-// Don't use 'blue' not visible on cmd.exe
-inspect.styles = {
-  'special': 'cyan',
-  'number': 'yellow',
-  'boolean': 'yellow',
-  'undefined': 'grey',
-  'null': 'bold',
-  'string': 'green',
-  'date': 'magenta',
-  // "name": intentionally not styling
-  'regexp': 'red'
-};
-
-
-function stylizeWithColor(str, styleType) {
-  var style = inspect.styles[styleType];
-
-  if (style) {
-    return '\u001b[' + inspect.colors[style][0] + 'm' + str +
-           '\u001b[' + inspect.colors[style][1] + 'm';
-  } else {
-    return str;
-  }
-}
-
-
-function stylizeNoColor(str, styleType) {
-  return str;
-}
-
-
-function arrayToHash(array) {
-  var hash = {};
-
-  array.forEach(function(val, idx) {
-    hash[val] = true;
-  });
-
-  return hash;
-}
-
-
-function formatValue(ctx, value, recurseTimes) {
-  // Provide a hook for user-specified inspect functions.
-  // Check that value is an object with an inspect function on it
-  if (ctx.customInspect &&
-      value &&
-      isFunction(value.inspect) &&
-      // Filter out the util module, it's inspect function is special
-      value.inspect !== exports.inspect &&
-      // Also filter out any prototype objects using the circular check.
-      !(value.constructor && value.constructor.prototype === value)) {
-    var ret = value.inspect(recurseTimes, ctx);
-    if (!isString(ret)) {
-      ret = formatValue(ctx, ret, recurseTimes);
-    }
-    return ret;
-  }
-
-  // Primitive types cannot have properties
-  var primitive = formatPrimitive(ctx, value);
-  if (primitive) {
-    return primitive;
-  }
-
-  // Look up the keys of the object.
-  var keys = Object.keys(value);
-  var visibleKeys = arrayToHash(keys);
-
-  if (ctx.showHidden) {
-    keys = Object.getOwnPropertyNames(value);
-  }
-
-  // IE doesn't make error fields non-enumerable
-  // http://msdn.microsoft.com/en-us/library/ie/dww52sbt(v=vs.94).aspx
-  if (isError(value)
-      && (keys.indexOf('message') >= 0 || keys.indexOf('description') >= 0)) {
-    return formatError(value);
-  }
-
-  // Some type of object without properties can be shortcutted.
-  if (keys.length === 0) {
-    if (isFunction(value)) {
-      var name = value.name ? ': ' + value.name : '';
-      return ctx.stylize('[Function' + name + ']', 'special');
-    }
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    }
-    if (isDate(value)) {
-      return ctx.stylize(Date.prototype.toString.call(value), 'date');
-    }
-    if (isError(value)) {
-      return formatError(value);
-    }
-  }
-
-  var base = '', array = false, braces = ['{', '}'];
-
-  // Make Array say that they are Array
-  if (isArray(value)) {
-    array = true;
-    braces = ['[', ']'];
-  }
-
-  // Make functions say that they are functions
-  if (isFunction(value)) {
-    var n = value.name ? ': ' + value.name : '';
-    base = ' [Function' + n + ']';
-  }
-
-  // Make RegExps say that they are RegExps
-  if (isRegExp(value)) {
-    base = ' ' + RegExp.prototype.toString.call(value);
-  }
-
-  // Make dates with properties first say the date
-  if (isDate(value)) {
-    base = ' ' + Date.prototype.toUTCString.call(value);
-  }
-
-  // Make error with message first say the error
-  if (isError(value)) {
-    base = ' ' + formatError(value);
-  }
-
-  if (keys.length === 0 && (!array || value.length == 0)) {
-    return braces[0] + base + braces[1];
-  }
-
-  if (recurseTimes < 0) {
-    if (isRegExp(value)) {
-      return ctx.stylize(RegExp.prototype.toString.call(value), 'regexp');
-    } else {
-      return ctx.stylize('[Object]', 'special');
-    }
-  }
-
-  ctx.seen.push(value);
-
-  var output;
-  if (array) {
-    output = formatArray(ctx, value, recurseTimes, visibleKeys, keys);
-  } else {
-    output = keys.map(function(key) {
-      return formatProperty(ctx, value, recurseTimes, visibleKeys, key, array);
-    });
-  }
-
-  ctx.seen.pop();
-
-  return reduceToSingleString(output, base, braces);
-}
-
-
-function formatPrimitive(ctx, value) {
-  if (isUndefined(value))
-    return ctx.stylize('undefined', 'undefined');
-  if (isString(value)) {
-    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                             .replace(/'/g, "\\'")
-                                             .replace(/\\"/g, '"') + '\'';
-    return ctx.stylize(simple, 'string');
-  }
-  if (isNumber(value))
-    return ctx.stylize('' + value, 'number');
-  if (isBoolean(value))
-    return ctx.stylize('' + value, 'boolean');
-  // For some reason typeof null is "object", so special case here.
-  if (isNull(value))
-    return ctx.stylize('null', 'null');
-}
-
-
-function formatError(value) {
-  return '[' + Error.prototype.toString.call(value) + ']';
-}
-
-
-function formatArray(ctx, value, recurseTimes, visibleKeys, keys) {
-  var output = [];
-  for (var i = 0, l = value.length; i < l; ++i) {
-    if (hasOwnProperty(value, String(i))) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          String(i), true));
-    } else {
-      output.push('');
-    }
-  }
-  keys.forEach(function(key) {
-    if (!key.match(/^\d+$/)) {
-      output.push(formatProperty(ctx, value, recurseTimes, visibleKeys,
-          key, true));
-    }
-  });
-  return output;
-}
-
-
-function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
-  var name, str, desc;
-  desc = Object.getOwnPropertyDescriptor(value, key) || { value: value[key] };
-  if (desc.get) {
-    if (desc.set) {
-      str = ctx.stylize('[Getter/Setter]', 'special');
-    } else {
-      str = ctx.stylize('[Getter]', 'special');
-    }
-  } else {
-    if (desc.set) {
-      str = ctx.stylize('[Setter]', 'special');
-    }
-  }
-  if (!hasOwnProperty(visibleKeys, key)) {
-    name = '[' + key + ']';
-  }
-  if (!str) {
-    if (ctx.seen.indexOf(desc.value) < 0) {
-      if (isNull(recurseTimes)) {
-        str = formatValue(ctx, desc.value, null);
-      } else {
-        str = formatValue(ctx, desc.value, recurseTimes - 1);
-      }
-      if (str.indexOf('\n') > -1) {
-        if (array) {
-          str = str.split('\n').map(function(line) {
-            return '  ' + line;
-          }).join('\n').substr(2);
-        } else {
-          str = '\n' + str.split('\n').map(function(line) {
-            return '   ' + line;
-          }).join('\n');
-        }
-      }
-    } else {
-      str = ctx.stylize('[Circular]', 'special');
-    }
-  }
-  if (isUndefined(name)) {
-    if (array && key.match(/^\d+$/)) {
-      return str;
-    }
-    name = JSON.stringify('' + key);
-    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-      name = name.substr(1, name.length - 2);
-      name = ctx.stylize(name, 'name');
-    } else {
-      name = name.replace(/'/g, "\\'")
-                 .replace(/\\"/g, '"')
-                 .replace(/(^"|"$)/g, "'");
-      name = ctx.stylize(name, 'string');
-    }
-  }
-
-  return name + ': ' + str;
-}
-
-
-function reduceToSingleString(output, base, braces) {
-  var numLinesEst = 0;
-  var length = output.reduce(function(prev, cur) {
-    numLinesEst++;
-    if (cur.indexOf('\n') >= 0) numLinesEst++;
-    return prev + cur.replace(/\u001b\[\d\d?m/g, '').length + 1;
-  }, 0);
-
-  if (length > 60) {
-    return braces[0] +
-           (base === '' ? '' : base + '\n ') +
-           ' ' +
-           output.join(',\n  ') +
-           ' ' +
-           braces[1];
-  }
-
-  return braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
-}
-
-
-// NOTE: These type checking functions intentionally don't use `instanceof`
-// because it is fragile and can be easily faked with `Object.create()`.
-function isArray(ar) {
-  return Array.isArray(ar);
-}
-exports.isArray = isArray;
-
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-exports.isBoolean = isBoolean;
-
-function isNull(arg) {
-  return arg === null;
-}
-exports.isNull = isNull;
-
-function isNullOrUndefined(arg) {
-  return arg == null;
-}
-exports.isNullOrUndefined = isNullOrUndefined;
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-exports.isNumber = isNumber;
-
-function isString(arg) {
-  return typeof arg === 'string';
-}
-exports.isString = isString;
-
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-exports.isSymbol = isSymbol;
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-exports.isUndefined = isUndefined;
-
-function isRegExp(re) {
-  return isObject(re) && objectToString(re) === '[object RegExp]';
-}
-exports.isRegExp = isRegExp;
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-exports.isObject = isObject;
-
-function isDate(d) {
-  return isObject(d) && objectToString(d) === '[object Date]';
-}
-exports.isDate = isDate;
-
-function isError(e) {
-  return isObject(e) &&
-      (objectToString(e) === '[object Error]' || e instanceof Error);
-}
-exports.isError = isError;
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-exports.isFunction = isFunction;
-
-function isPrimitive(arg) {
-  return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
-}
-exports.isPrimitive = isPrimitive;
-
-exports.isBuffer = require('./support/isBuffer');
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-
-function pad(n) {
-  return n < 10 ? '0' + n.toString(10) : n.toString(10);
-}
-
-
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
-              'Oct', 'Nov', 'Dec'];
-
-// 26 Feb 16:19:34
-function timestamp() {
-  var d = new Date();
-  var time = [pad(d.getHours()),
-              pad(d.getMinutes()),
-              pad(d.getSeconds())].join(':');
-  return [d.getDate(), months[d.getMonth()], time].join(' ');
-}
-
-
-// log is just a thin wrapper to console.log that prepends a timestamp
-exports.log = function() {
-  console.log('%s - %s', timestamp(), exports.format.apply(exports, arguments));
-};
-
-
-/**
- * Inherit the prototype methods from one constructor into another.
- *
- * The Function.prototype.inherits from lang.js rewritten as a standalone
- * function (not on Function.prototype). NOTE: If this file is to be loaded
- * during bootstrapping this function needs to be rewritten using some native
- * functions as prototype setup using normal JavaScript does not work as
- * expected during bootstrapping (see mirror.js in r114903).
- *
- * @param {function} ctor Constructor function which needs to inherit the
- *     prototype.
- * @param {function} superCtor Constructor function to inherit prototype from.
- */
-exports.inherits = require('inherits');
-
-exports._extend = function(origin, add) {
-  // Don't do anything if add isn't an object
-  if (!add || !isObject(add)) return origin;
-
-  var keys = Object.keys(add);
-  var i = keys.length;
-  while (i--) {
-    origin[keys[i]] = add[keys[i]];
-  }
-  return origin;
-};
-
-function hasOwnProperty(obj, prop) {
-  return Object.prototype.hasOwnProperty.call(obj, prop);
-}
-
-}).call(this)}).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":18,"_process":21,"inherits":17}],20:[function(require,module,exports){
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
-
-'use strict';
-/* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
-
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !==
-				'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
-};
-
-},{}],21:[function(require,module,exports){
-// shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],22:[function(require,module,exports){
+},{"../domain/TodoService":1,"../domain/widgets/RespWidget":4,"../domain/widgets/TaskWidget":5}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1936,7 +345,7 @@ var _stringify = _interopRequireDefault(require("./stringify.js"));
 var _parse = _interopRequireDefault(require("./parse.js"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-},{"./nil.js":25,"./parse.js":26,"./stringify.js":30,"./v1.js":31,"./v3.js":32,"./v4.js":34,"./v5.js":35,"./validate.js":36,"./version.js":37}],23:[function(require,module,exports){
+},{"./nil.js":10,"./parse.js":11,"./stringify.js":15,"./v1.js":16,"./v3.js":17,"./v4.js":19,"./v5.js":20,"./validate.js":21,"./version.js":22}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2160,7 +569,7 @@ function md5ii(a, b, c, d, x, s, t) {
 
 var _default = md5;
 exports.default = _default;
-},{}],24:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2172,7 +581,7 @@ var _default = {
   randomUUID
 };
 exports.default = _default;
-},{}],25:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2181,7 +590,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var _default = '00000000-0000-0000-0000-000000000000';
 exports.default = _default;
-},{}],26:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2227,7 +636,7 @@ function parse(uuid) {
 
 var _default = parse;
 exports.default = _default;
-},{"./validate.js":36}],27:[function(require,module,exports){
+},{"./validate.js":21}],12:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2236,7 +645,7 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var _default = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i;
 exports.default = _default;
-},{}],28:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2262,7 +671,7 @@ function rng() {
 
   return getRandomValues(rnds8);
 }
-},{}],29:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2367,7 +776,7 @@ function sha1(bytes) {
 
 var _default = sha1;
 exports.default = _default;
-},{}],30:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2412,7 +821,7 @@ function stringify(arr, offset = 0) {
 
 var _default = stringify;
 exports.default = _default;
-},{"./validate.js":36}],31:[function(require,module,exports){
+},{"./validate.js":21}],16:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2520,7 +929,7 @@ function v1(options, buf, offset) {
 
 var _default = v1;
 exports.default = _default;
-},{"./rng.js":28,"./stringify.js":30}],32:[function(require,module,exports){
+},{"./rng.js":13,"./stringify.js":15}],17:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2537,7 +946,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 const v3 = (0, _v.default)('v3', 0x30, _md.default);
 var _default = v3;
 exports.default = _default;
-},{"./md5.js":23,"./v35.js":33}],33:[function(require,module,exports){
+},{"./md5.js":8,"./v35.js":18}],18:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2618,7 +1027,7 @@ function v35(name, version, hashfunc) {
   generateUUID.URL = URL;
   return generateUUID;
 }
-},{"./parse.js":26,"./stringify.js":30}],34:[function(require,module,exports){
+},{"./parse.js":11,"./stringify.js":15}],19:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2662,7 +1071,7 @@ function v4(options, buf, offset) {
 
 var _default = v4;
 exports.default = _default;
-},{"./native.js":24,"./rng.js":28,"./stringify.js":30}],35:[function(require,module,exports){
+},{"./native.js":9,"./rng.js":13,"./stringify.js":15}],20:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2679,7 +1088,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 const v5 = (0, _v.default)('v5', 0x50, _sha.default);
 var _default = v5;
 exports.default = _default;
-},{"./sha1.js":29,"./v35.js":33}],36:[function(require,module,exports){
+},{"./sha1.js":14,"./v35.js":18}],21:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2697,7 +1106,7 @@ function validate(uuid) {
 
 var _default = validate;
 exports.default = _default;
-},{"./regex.js":27}],37:[function(require,module,exports){
+},{"./regex.js":12}],22:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2719,10 +1128,4 @@ function version(uuid) {
 
 var _default = version;
 exports.default = _default;
-},{"./validate.js":36}],"run":[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var App_1 = require("./App");
-(new App_1.App()).init().run();
-
-},{"./App":1}]},{},[]);
+},{"./validate.js":21}]},{},[6]);
