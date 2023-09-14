@@ -2,13 +2,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TodoService = void 0;
-var StateManager_1 = require("./models/StateManager");
 var FormWidget_1 = require("./widgets/FormWidget");
 var TaskWidget_1 = require("./widgets/TaskWidget");
 var uuid_1 = require("uuid");
 var TodoService = /** @class */ (function () {
-    function TodoService(initData) {
-        this.stateManager = new StateManager_1.StateManager(new FormWidget_1.FormWidget(initData[0].getId(), ''), initData);
+    function TodoService(stateManager) {
+        this.stateManager = stateManager;
     }
     TodoService.prototype.printFormHtml = function () {
         return this.stateManager.getForm().render(this.stateManager.getRespsAsRecord());
@@ -23,6 +22,7 @@ var TodoService = /** @class */ (function () {
     };
     TodoService.prototype.applyForm = function () {
         this.stateManager.updateResp(this.stateManager.getOneResp(this.stateManager.getForm().getResId()).addTask(new TaskWidget_1.TaskWidget((0, uuid_1.v4)(), this.stateManager.getForm().getName(), false)));
+        this.stateManager.updateFormName("");
     };
     TodoService.prototype.switchTask = function (id) {
         var resp = this.stateManager.getRespByTaskId(id);
@@ -48,7 +48,119 @@ var TodoService = /** @class */ (function () {
 }());
 exports.TodoService = TodoService;
 
-},{"./models/StateManager":2,"./widgets/FormWidget":3,"./widgets/TaskWidget":5,"uuid":7}],2:[function(require,module,exports){
+},{"./widgets/FormWidget":2,"./widgets/TaskWidget":4,"uuid":7}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.FormWidget = void 0;
+var FormWidget = /** @class */ (function () {
+    function FormWidget(resId, name) {
+        this.resId = resId;
+        this.name = name;
+    }
+    FormWidget.prototype.setName = function (name) {
+        this.name = name;
+    };
+    FormWidget.prototype.renderSelected = function (k) {
+        return (this.resId === k)
+            ? ' selected'
+            : '';
+    };
+    FormWidget.prototype.getResId = function () {
+        return this.resId;
+    };
+    FormWidget.prototype.getName = function () {
+        return this.name;
+    };
+    FormWidget.prototype.render = function (allResps) {
+        var _this = this;
+        var options = Object.keys(allResps)
+            .map(function (k) { return "<option value=\"".concat(k, "\"").concat(_this.renderSelected(k), ">")
+            + "".concat(allResps[k], "</option>"); });
+        return /*html*/ "<div>\n            <input type=\"text\" id=\"".concat(FormWidget.formInputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(FormWidget.formSelectId, "\">").concat(options, "</select>\n            <button id=\"").concat(FormWidget.submitBtnId, "\">Submit</button>\n        </div>");
+    };
+    FormWidget.formInputId = 'form-input';
+    FormWidget.formSelectId = 'form-select-id';
+    FormWidget.submitBtnId = 'submit-btn-id';
+    return FormWidget;
+}());
+exports.FormWidget = FormWidget;
+
+},{}],3:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.RespWidget = void 0;
+var RespWidget = /** @class */ (function () {
+    function RespWidget(id, name, tasks) {
+        this.id = id;
+        this.name = name;
+        this.tasks = tasks;
+    }
+    RespWidget.prototype.getId = function () {
+        return this.id;
+    };
+    RespWidget.prototype.getName = function () {
+        return this.name;
+    };
+    RespWidget.prototype.getContainerId = function () {
+        return 'resp-' + this.id;
+    };
+    RespWidget.prototype.withName = function (name) {
+        return new RespWidget(this.id, name, this.tasks);
+    };
+    RespWidget.prototype.addTask = function (task) {
+        return new RespWidget(this.id, this.name, this.tasks.concat([task]));
+    };
+    RespWidget.prototype.hasTask = function (id) {
+        return this.tasks.filter(function (el) { return el.getId() === id; }).length > 0;
+    };
+    RespWidget.prototype.switchTask = function (id) {
+        this.tasks = this.tasks.map(function (el) { return (el.getId() === id)
+            ? el.switched()
+            : el; });
+    };
+    RespWidget.prototype.getTasks = function () {
+        return this.tasks;
+    };
+    RespWidget.prototype.render = function () {
+        return "\n        <ul id=\"".concat(this.getContainerId(), "\">\n            <li><b>").concat(this.name, "</b></li>\n            <ul>").concat(this.tasks.map(function (t) { return t.render(); }).join(''), "</ul>\n        </ul>");
+    };
+    return RespWidget;
+}());
+exports.RespWidget = RespWidget;
+
+},{}],4:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TaskWidget = void 0;
+var TaskWidget = /** @class */ (function () {
+    function TaskWidget(id, name, isReady) {
+        this.id = id;
+        this.name = name;
+        this.isReady = isReady;
+    }
+    TaskWidget.prototype.getId = function () {
+        return this.id;
+    };
+    TaskWidget.prototype.switched = function () {
+        return new TaskWidget(this.id, this.name, !this.isReady);
+    };
+    TaskWidget.prototype.getName = function () {
+        return this.name;
+    };
+    TaskWidget.prototype.inBold = function (s) {
+        return "<b>".concat(s, "</b>");
+    };
+    TaskWidget.prototype.getContainerId = function () {
+        return 'task-' + this.id;
+    };
+    TaskWidget.prototype.render = function () {
+        return "\n        <li id=\"".concat(this.getContainerId(), "\">").concat(this.isReady ? this.inBold(this.name) : this.name, "</li>");
+    };
+    return TaskWidget;
+}());
+exports.TaskWidget = TaskWidget;
+
+},{}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StateManager = void 0;
@@ -99,124 +211,14 @@ var StateManager = /** @class */ (function () {
 }());
 exports.StateManager = StateManager;
 
-},{}],3:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FormWidget = void 0;
-var FormWidget = /** @class */ (function () {
-    function FormWidget(resId, name) {
-        this.resId = resId;
-        this.name = name;
-    }
-    FormWidget.prototype.setName = function (name) {
-        this.name = name;
-    };
-    FormWidget.prototype.renderSelected = function (k) {
-        return (this.resId === k)
-            ? ' selected'
-            : '';
-    };
-    FormWidget.prototype.getResId = function () {
-        return this.resId;
-    };
-    FormWidget.prototype.getName = function () {
-        return this.name;
-    };
-    FormWidget.prototype.render = function (allResps) {
-        var _this = this;
-        var options = Object.keys(allResps)
-            .map(function (k) { return "<option value=\"".concat(k, "\"").concat(_this.renderSelected(k), ">")
-            + "".concat(allResps[k], "</option>"); });
-        return "<div>\n            <input type=\"text\" id=\"".concat(FormWidget.formInputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(FormWidget.formSelectId, "\">").concat(options, "</select>\n            <button id=\"").concat(FormWidget.submitBtnId, "\">Submit</button>\n        </div>");
-    };
-    FormWidget.formInputId = 'form-input';
-    FormWidget.formSelectId = 'form-select-id';
-    FormWidget.submitBtnId = 'submit-btn-id';
-    return FormWidget;
-}());
-exports.FormWidget = FormWidget;
-
-},{}],4:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RespWidget = void 0;
-var RespWidget = /** @class */ (function () {
-    function RespWidget(id, name, tasks) {
-        this.id = id;
-        this.name = name;
-        this.tasks = tasks;
-    }
-    RespWidget.prototype.getId = function () {
-        return this.id;
-    };
-    RespWidget.prototype.getName = function () {
-        return this.name;
-    };
-    RespWidget.prototype.getContainerId = function () {
-        return 'resp-' + this.id;
-    };
-    RespWidget.prototype.withName = function (name) {
-        return new RespWidget(this.id, name, this.tasks);
-    };
-    RespWidget.prototype.addTask = function (task) {
-        return new RespWidget(this.id, this.name, this.tasks.concat([task]));
-    };
-    RespWidget.prototype.hasTask = function (id) {
-        return this.tasks.filter(function (el) { return el.getId() === id; }).length > 0;
-    };
-    RespWidget.prototype.switchTask = function (id) {
-        this.tasks = this.tasks.map(function (el) { return (el.getId() === id)
-            ? el.switched()
-            : el; });
-    };
-    RespWidget.prototype.getTasks = function () {
-        return this.tasks;
-    };
-    RespWidget.prototype.render = function () {
-        return "\n        <ul id=\"".concat(this.getContainerId(), "\">\n            <li><b>").concat(this.name, "</b></li>\n            <ul>").concat(this.tasks.map(function (t) { return t.render(); }).join(''), "</ul>\n        </ul>");
-    };
-    return RespWidget;
-}());
-exports.RespWidget = RespWidget;
-
-},{}],5:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.TaskWidget = void 0;
-var TaskWidget = /** @class */ (function () {
-    function TaskWidget(id, name, isReady) {
-        this.id = id;
-        this.name = name;
-        this.isReady = isReady;
-    }
-    TaskWidget.prototype.getId = function () {
-        return this.id;
-    };
-    TaskWidget.prototype.switched = function () {
-        return new TaskWidget(this.id, this.name, !this.isReady);
-    };
-    TaskWidget.prototype.getName = function () {
-        return this.name;
-    };
-    TaskWidget.prototype.inBold = function (s) {
-        return "<b>".concat(s, "</b>");
-    };
-    TaskWidget.prototype.getContainerId = function () {
-        return 'task-' + this.id;
-    };
-    TaskWidget.prototype.render = function () {
-        return "\n        <li id=\"".concat(this.getContainerId(), "\">").concat(this.isReady ? this.inBold(this.name) : this.name, "</li>");
-    };
-    return TaskWidget;
-}());
-exports.TaskWidget = TaskWidget;
-
 },{}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var TodoService_1 = require("../domain/TodoService");
+var FormWidget_1 = require("../domain/widgets/FormWidget");
 var RespWidget_1 = require("../domain/widgets/RespWidget");
 var TaskWidget_1 = require("../domain/widgets/TaskWidget");
+var StateManager_1 = require("./StateManager");
 var initData = [
     new RespWidget_1.RespWidget('afda59c8-29f0-4795-93be-2d744d62b6ad', "Mary", [
         new TaskWidget_1.TaskWidget('18e53e29-787f-4696-9a00-34d8e9202ded', 'Groome the cat', false),
@@ -226,7 +228,8 @@ var initData = [
         new TaskWidget_1.TaskWidget('59586d15-0604-49ca-90cc-32c116ffb66a', "Solve equation", false)
     ])
 ];
-var todoService = new TodoService_1.TodoService(initData);
+var stateManager = new StateManager_1.StateManager(new FormWidget_1.FormWidget(initData[0].getId(), ''), initData);
+var todoService = new TodoService_1.TodoService(stateManager);
 function querySelect(selector) {
     var htmlEl = document.querySelector(selector);
     if (!(htmlEl instanceof HTMLElement)) {
@@ -265,7 +268,7 @@ function renderForm() {
 renderForm();
 renderResps();
 
-},{"../domain/TodoService":1,"../domain/widgets/RespWidget":4,"../domain/widgets/TaskWidget":5}],7:[function(require,module,exports){
+},{"../domain/TodoService":1,"../domain/widgets/FormWidget":2,"../domain/widgets/RespWidget":3,"../domain/widgets/TaskWidget":4,"./StateManager":5}],7:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {

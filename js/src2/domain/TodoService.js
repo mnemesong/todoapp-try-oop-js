@@ -1,13 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TodoService = void 0;
-var StateManager_1 = require("./models/StateManager");
 var FormWidget_1 = require("./widgets/FormWidget");
 var TaskWidget_1 = require("./widgets/TaskWidget");
 var uuid_1 = require("uuid");
 var TodoService = /** @class */ (function () {
-    function TodoService(initData) {
-        this.stateManager = new StateManager_1.StateManager(new FormWidget_1.FormWidget(initData[0].getId(), ''), initData);
+    function TodoService(stateManager) {
+        this.stateManager = stateManager;
     }
     TodoService.prototype.printFormHtml = function () {
         return this.stateManager.getForm().render(this.stateManager.getRespsAsRecord());
@@ -22,6 +21,7 @@ var TodoService = /** @class */ (function () {
     };
     TodoService.prototype.applyForm = function () {
         this.stateManager.updateResp(this.stateManager.getOneResp(this.stateManager.getForm().getResId()).addTask(new TaskWidget_1.TaskWidget((0, uuid_1.v4)(), this.stateManager.getForm().getName(), false)));
+        this.stateManager.updateFormName("");
     };
     TodoService.prototype.switchTask = function (id) {
         var resp = this.stateManager.getRespByTaskId(id);

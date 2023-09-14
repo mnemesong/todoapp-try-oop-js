@@ -25,7 +25,7 @@ var FormWidget = /** @class */ (function () {
         var options = Object.keys(allResps)
             .map(function (k) { return "<option value=\"".concat(k, "\"").concat(_this.renderSelected(k), ">")
             + "".concat(allResps[k], "</option>"); });
-        return "<div>\n            <input type=\"text\" id=\"".concat(FormWidget.formInputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(FormWidget.formSelectId, "\">").concat(options, "</select>\n            <button id=\"").concat(FormWidget.submitBtnId, "\">Submit</button>\n        </div>");
+        return /*html*/ "<div>\n            <input type=\"text\" id=\"".concat(FormWidget.formInputId, "\" value=\"").concat(this.name, "\">\n            <select id=\"").concat(FormWidget.formSelectId, "\">").concat(options, "</select>\n            <button id=\"").concat(FormWidget.submitBtnId, "\">Submit</button>\n        </div>");
     };
     FormWidget.formInputId = 'form-input';
     FormWidget.formSelectId = 'form-select-id';

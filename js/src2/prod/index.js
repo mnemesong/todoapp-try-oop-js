@@ -1,8 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var TodoService_1 = require("../domain/TodoService");
+var FormWidget_1 = require("../domain/widgets/FormWidget");
 var RespWidget_1 = require("../domain/widgets/RespWidget");
 var TaskWidget_1 = require("../domain/widgets/TaskWidget");
+var StateManager_1 = require("./StateManager");
 var initData = [
     new RespWidget_1.RespWidget('afda59c8-29f0-4795-93be-2d744d62b6ad', "Mary", [
         new TaskWidget_1.TaskWidget('18e53e29-787f-4696-9a00-34d8e9202ded', 'Groome the cat', false),
@@ -12,7 +14,8 @@ var initData = [
         new TaskWidget_1.TaskWidget('59586d15-0604-49ca-90cc-32c116ffb66a', "Solve equation", false)
     ])
 ];
-var todoService = new TodoService_1.TodoService(initData);
+var stateManager = new StateManager_1.StateManager(new FormWidget_1.FormWidget(initData[0].getId(), ''), initData);
+var todoService = new TodoService_1.TodoService(stateManager);
 function querySelect(selector) {
     var htmlEl = document.querySelector(selector);
     if (!(htmlEl instanceof HTMLElement)) {

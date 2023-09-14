@@ -1,22 +1,16 @@
-import { StateManager } from "./models/StateManager";
+import { IStateManager } from "./models/IStateManager";
 import { FormWidget } from "./widgets/FormWidget";
 import { RespWidget } from "./widgets/RespWidget";
 import { TaskWidget } from "./widgets/TaskWidget";
 import { v4 as uuid} from "uuid"
 
 export class TodoService {
-    private stateManager: StateManager
+    private stateManager: IStateManager
 
     public constructor(
-        initData: RespWidget[]
+        stateManager: IStateManager
     ) {
-        this.stateManager = new StateManager(
-            new FormWidget(
-                initData[0].getId(),
-                ''
-            ),
-            initData
-        )
+        this.stateManager = stateManager
     }
 
     public printFormHtml() {
@@ -42,6 +36,7 @@ export class TodoService {
             this.stateManager.getForm().getName(),
             false
         )))
+        this.stateManager.updateFormName("")
     }
 
     public switchTask(id: string) {

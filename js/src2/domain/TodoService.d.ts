@@ -1,7 +1,7 @@
-import { RespWidget } from "./widgets/RespWidget";
+import { IStateManager } from "./models/IStateManager";
 export declare class TodoService {
     private stateManager;
-    constructor(initData: RespWidget[]);
+    constructor(stateManager: IStateManager);
     printFormHtml(): string;
     printRespsHtml(): string;
     setFormName(name: string): void;

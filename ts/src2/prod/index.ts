@@ -1,6 +1,8 @@
 import { TodoService } from "../domain/TodoService";
+import { FormWidget } from "../domain/widgets/FormWidget";
 import { RespWidget } from "../domain/widgets/RespWidget";
 import { TaskWidget } from "../domain/widgets/TaskWidget";
+import { StateManager } from "./StateManager";
 
 const initData: RespWidget[] = [
     new RespWidget(
@@ -32,7 +34,14 @@ const initData: RespWidget[] = [
     )
 ]
 
-const todoService = new TodoService( initData )
+const stateManager = new StateManager(
+    new FormWidget(
+        initData[0].getId(),
+        ''
+    ),
+    initData
+)
+const todoService = new TodoService( stateManager )
 
 function querySelect(selector: string): HTMLElement {
     const htmlEl = document.querySelector(selector)

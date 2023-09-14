@@ -36,7 +36,7 @@ export class FormWidget {
         const options = Object.keys(allResps)
             .map(k => `<option value="${k}"${this.renderSelected(k)}>` 
                 + `${allResps[k]}</option>`)
-        return `<div>
+        return /*html*/`<div>
             <input type="text" id="${FormWidget.formInputId}" value="${this.name}">
             <select id="${FormWidget.formSelectId}">${options}</select>
             <button id="${FormWidget.submitBtnId}">Submit</button>

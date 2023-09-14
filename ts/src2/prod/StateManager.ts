@@ -1,7 +1,8 @@
-import { FormWidget } from "../widgets/FormWidget";
-import { RespWidget } from "../widgets/RespWidget";
+import { FormWidget } from "../domain/widgets/FormWidget";
+import { RespWidget } from "../domain/widgets/RespWidget";
+import { IStateManager } from "../domain/models/IStateManager";
 
-export class StateManager {
+export class StateManager implements IStateManager {
     private form: FormWidget
     private resps: RespWidget[]
 
