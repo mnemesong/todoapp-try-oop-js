@@ -1,2 +1,4 @@
-# todoapp-try-oop-js
-try to build oop todoapp on js
+# todoapp-try-rescript-js
+try to build rescript todoapp on js
+
+UNFINISHED!
